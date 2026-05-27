@@ -28,7 +28,7 @@ const MOCK_PHOTOS = [
     thumb: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=400&q=80",
     title: "First Snow",
     description: "Everything was quiet. Everything was us.",
-    date: "2024-12-03",
+    date: "2024-12-03",    
     category: "Seasons",
     aspectRatio: "portrait",
   },
