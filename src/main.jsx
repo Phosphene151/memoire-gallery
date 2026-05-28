@@ -1,0 +1,730 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { createClient } from '@supabase/supabase-js'
+
+// ── CONFIG ── Reads securely from Vercel Environment Variables
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+const CATEGORIES = ['All','Moments','Portraits','Seasons','Night','Travel','Together']
+
+// ── ICONS
+const Icon = ({d,size=20,sw=1.5})=>(
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d}/>
+  </svg>
+)
+const Icons = {
+  search: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0",
+  plus: "M12 5v14M5 12h14",
+  x: "M18 6L6 18M6 6l12 12",
+  back: "M19 12H5M12 19l-7-7 7-7",
+  edit: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+  trash: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6",
+  grid: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
+  clock: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 6v6l4 2",
+  upload: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12",
+  heart: "M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z",
+  tag: "M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01",
+  cal: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+  share: "M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13",
+  check: "M20 6L9 17l-5-5",
+  user: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
+  eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 100 6 3 3 0 000-6z",
+}
+
+const fmtDate = d => new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+
+// ── TOAST
+function Toast({msg,visible}){
+  return <div style={{
+    position:'fixed',bottom:100,left:'50%',transform:`translateX(-50%) translateY(${visible?0:16}px)`,
+    opacity:visible?1:0,transition:'all .3s ease',
+    background:'rgba(255,255,255,0.1)',backdropFilter:'blur(20px)',
+    color:'#fff',padding:'10px 22px',borderRadius:40,fontSize:13,
+    fontFamily:"'EB Garamond',serif",letterSpacing:'.05em',
+    border:'1px solid rgba(255,255,255,0.15)',zIndex:9999,
+    pointerEvents:'none',whiteSpace:'nowrap',
+  }}>{msg}</div>
+}
+
+// ── LOGIN SCREEN
+function LoginScreen({onAuth}){
+  const [mode,setMode] = React.useState('login')
+  const [email,setEmail] = React.useState('')
+  const [pass,setPass] = React.useState('')
+  const [loading,setLoading] = React.useState(false)
+  const [err,setErr] = React.useState('')
+  const [done,setDone] = React.useState(false)
+
+  const handle = async()=>{
+    setLoading(true); setErr('')
+    try{
+      if(mode==='login'){
+        const {data,error} = await sb.auth.signInWithPassword({email,password:pass})
+        if(error) throw error
+        onAuth(data.user)
+      } else {
+        const {error} = await sb.auth.signUp({email,password:pass})
+        if(error) throw error
+        setDone(true)
+      }
+    }catch(e){ setErr(e.message) }
+    setLoading(false)
+  }
+
+  const inp = {
+    width:'100%',background:'rgba(255,255,255,0.05)',
+    border:'1px solid rgba(255,255,255,0.1)',borderRadius:12,
+    padding:'14px 16px',color:'#fff',fontSize:16,
+    fontFamily:"'EB Garamond',serif",outline:'none',
+    boxSizing:'border-box',colorScheme:'dark',marginBottom:12,display:'block'
+  }
+
+  if(done) return(
+    <div style={{minHeight:'100vh',background:'#080808',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,fontFamily:"'EB Garamond',serif"}}>
+      <div style={{fontSize:40,marginBottom:16}}>✦</div>
+      <div style={{color:'#fff',fontSize:22,fontStyle:'italic',marginBottom:8}}>Check your email</div>
+      <div style={{color:'rgba(255,255,255,0.4)',fontSize:14,textAlign:'center'}}>We sent a confirmation link to {email}. Tap it to activate your account, then come back and log in.</div>
+      <button onClick={()=>{setMode('login');setDone(false)}} style={{marginTop:32,padding:'14px 32px',borderRadius:40,background:'rgba(255,220,180,0.1)',border:'1px solid rgba(255,220,180,0.3)',color:'rgba(255,220,180,0.8)',fontSize:15,cursor:'pointer'}}>Back to Login</button>
+    </div>
+  )
+
+  return(
+    <div style={{minHeight:'100vh',background:'#080808',display:'flex',flexDirection:'column',justifyContent:'center',padding:'40px 28px',fontFamily:"'EB Garamond',serif"}}>
+      <div style={{marginBottom:48}}>
+        <div style={{fontSize:11,letterSpacing:'.2em',color:'rgba(255,220,180,0.4)',marginBottom:6}}>OUR ARCHIVE</div>
+        <div style={{fontSize:42,color:'#fff',fontStyle:'italic',fontWeight:400}}>Mémoire</div>
+        <div style={{fontSize:14,color:'rgba(255,255,255,0.3)',marginTop:6,letterSpacing:'.04em'}}>A private space for two</div>
+      </div>
+
+      <div style={{marginBottom:8}}>
+        <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:6}}>EMAIL</div>
+        <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" style={inp}/>
+      </div>
+      <div style={{marginBottom:4}}>
+        <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:6}}>PASSWORD</div>
+        <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" style={inp} onKeyDown={e=>e.key==='Enter'&&handle()}/>
+      </div>
+
+      {err && <div style={{color:'#ff8080',fontSize:13,marginBottom:12,padding:'10px 14px',background:'rgba(255,80,80,0.08)',borderRadius:8}}>{err}</div>}
+
+      <button onClick={handle} disabled={loading||!email||!pass} style={{
+        width:'100%',padding:'16px',borderRadius:14,marginTop:8,
+        background:email&&pass?'linear-gradient(135deg,rgba(255,220,180,0.2),rgba(200,150,100,0.12))':'rgba(255,255,255,0.03)',
+        border:`1px solid ${email&&pass?'rgba(255,220,180,0.3)':'rgba(255,255,255,0.06)'}`,
+        color:email&&pass?'rgba(255,220,180,0.9)':'rgba(255,255,255,0.2)',
+        fontSize:16,cursor:email&&pass?'pointer':'not-allowed',fontStyle:'italic',
+        display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+        transition:'all .3s',letterSpacing:'.06em',
+      }}>
+        {loading ? <div style={{width:18,height:18,border:'2px solid rgba(255,220,180,0.3)',borderTopColor:'rgba(255,220,180,0.8)',borderRadius:'50%',animation:'spin 1s linear infinite'}}/> : mode==='login'?'Enter the Archive':'Create Account'}
+      </button>
+
+      <button onClick={()=>{setMode(m=>m==='login'?'signup':'login');setErr('')}} style={{
+        background:'none',border:'none',color:'rgba(255,255,255,0.3)',
+        fontSize:13,marginTop:20,cursor:'pointer',letterSpacing:'.06em',
+      }}>
+        {mode==='login'?'No account? Sign up →':'Already have one? Log in →'}
+      </button>
+    </div>
+  )
+}
+
+// ── UPLOAD SHEET
+function UploadSheet({user,onClose,onDone,toast}){
+  const [preview,setPreview] = React.useState(null)
+  const [file,setFile] = React.useState(null)
+  const [form,setForm] = React.useState({title:'',description:'',date:new Date().toISOString().split('T')[0],category:'Moments'})
+  const [loading,setLoading] = React.useState(false)
+  const fileRef = React.useRef()
+
+  const pickFile = e=>{
+    const f = e.target.files[0]
+    if(!f) return
+    setFile(f)
+    setPreview(URL.createObjectURL(f))
+  }
+
+  const save = async()=>{
+    if(!file) return
+    setLoading(true)
+    try{
+      const ext = file.name.split('.').pop()
+      const path = `${user.id}/${Date.now()}.${ext}`
+      const {error:upErr} = await sb.storage.from('photos').upload(path,file,{contentType:file.type})
+      if(upErr) throw upErr
+      const {data:{publicUrl}} = sb.storage.from('photos').getPublicUrl(path)
+      const {error:dbErr} = await sb.from('photos').insert({
+        owner_id:user.id,
+        public_url:publicUrl,
+        storage_path:path,
+        title:form.title||'Untitled',
+        description:form.description||null,
+        date:form.date,
+        category:form.category,
+        aspect_ratio:'portrait',
+      })
+      if(dbErr) throw dbErr
+      toast('Memory saved ✦')
+      onDone()
+      onClose()
+    }catch(e){ toast('Error: '+e.message) }
+    setLoading(false)
+  }
+
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(5,5,5,0.98)',display:'flex',flexDirection:'column',fontFamily:"'EB Garamond',serif",overflowY:'auto'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'52px 20px 16px'}}>
+        <span style={{color:'#fff',fontSize:20,fontStyle:'italic'}}>New Memory</span>
+        <button onClick={onClose} style={{background:'rgba(255,255,255,0.08)',border:'none',borderRadius:30,padding:'8px 12px',color:'rgba(255,255,255,0.5)',cursor:'pointer'}}><Icon d={Icons.x}/></button>
+      </div>
+
+      <div style={{padding:'0 20px 32px'}}>
+        <div onClick={()=>fileRef.current.click()} style={{
+          border:`1.5px dashed ${preview?'rgba(255,220,180,0.3)':'rgba(255,255,255,0.12)'}`,
+          borderRadius:16,overflow:'hidden',cursor:'pointer',marginBottom:20,
+          minHeight:preview?0:180,display:'flex',alignItems:'center',justifyContent:'center',
+          background:'rgba(255,255,255,0.02)',
+        }}>
+          {preview
+            ? <img src={preview} style={{width:'100%',maxHeight:300,objectFit:'cover',display:'block'}}/>
+            : <div style={{textAlign:'center',padding:40,color:'rgba(255,255,255,0.25)'}}>
+                <div style={{marginBottom:12}}><Icon d={Icons.upload} size={36} sw={1}/></div>
+                <div style={{fontSize:13,letterSpacing:'.1em'}}>TAP TO CHOOSE PHOTO</div>
+              </div>
+          }
+          <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={pickFile}/>
+        </div>
+
+        {[
+          {k:'title',label:'TITLE',ph:'Name this memory…',type:'text'},
+          {k:'description',label:'CAPTION',ph:'A few words…',type:'text'},
+          {k:'date',label:'DATE',ph:'',type:'date'},
+        ].map(({k,label,ph,type})=>(
+          <div key={k} style={{marginBottom:14}}>
+            <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:5}}>{label}</div>
+            <input type={type} placeholder={ph} value={form[k]}
+              onChange={e=>setForm({...form,[k]:e.target.value})}
+              style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:15,fontFamily:"'EB Garamond',serif",outline:'none',boxSizing:'border-box',colorScheme:'dark'}}/>
+          </div>
+        ))}
+
+        <div style={{marginBottom:24}}>
+          <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:8}}>CATEGORY</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+            {CATEGORIES.filter(c=>c!=='All').map(c=>(
+              <button key={c} onClick={()=>setForm({...form,category:c})} style={{
+                padding:'7px 14px',borderRadius:30,fontSize:13,cursor:'pointer',fontStyle:'italic',
+                background:form.category===c?'rgba(255,220,180,0.12)':'rgba(255,255,255,0.04)',
+                border:`1px solid ${form.category===c?'rgba(255,220,180,0.35)':'rgba(255,255,255,0.08)'}`,
+                color:form.category===c?'rgba(255,220,180,0.85)':'rgba(255,255,255,0.4)',
+                transition:'all .2s',
+              }}>{c}</button>
+            ))}
+          </div>
+        </div>
+
+        <button onClick={save} disabled={!preview||loading} style={{
+          width:'100%',padding:'16px',borderRadius:14,
+          background:preview?'linear-gradient(135deg,rgba(255,220,180,0.18),rgba(200,150,100,0.1))':'rgba(255,255,255,0.03)',
+          border:`1px solid ${preview?'rgba(255,220,180,0.3)':'rgba(255,255,255,0.06)'}`,
+          color:preview?'rgba(255,220,180,0.9)':'rgba(255,255,255,0.2)',
+          fontSize:16,cursor:preview?'pointer':'not-allowed',fontStyle:'italic',
+          display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+          transition:'all .3s',letterSpacing:'.06em',
+        }}>
+          {loading?<div style={{width:18,height:18,border:'2px solid rgba(255,220,180,0.3)',borderTopColor:'rgba(255,220,180,0.8)',borderRadius:'50%',animation:'spin 1s linear infinite'}}/>:'Save Memory'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── FULLSCREEN VIEWER
+function Viewer({photos,startIdx,user,onClose,onDelete,onEdit,favs,toggleFav,toast}){
+  const [idx,setIdx] = React.useState(startIdx)
+  const [showInfo,setShowInfo] = React.useState(false)
+  const [confirmDel,setConfirmDel] = React.useState(false)
+  const p = photos[idx]
+  const txRef = React.useRef(null)
+
+  const onTouchStart = e=>{ txRef.current = e.touches[0].clientX }
+  const onTouchEnd = e=>{
+    if(!txRef.current) return
+    const d = txRef.current - e.changedTouches[0].clientX
+    if(Math.abs(d)>55){
+      if(d>0 && idx<photos.length-1) setIdx(i=>i+1)
+      if(d<0 && idx>0) setIdx(i=>i-1)
+    }
+    txRef.current=null
+  }
+
+  const doDelete = async()=>{
+    try{
+      await sb.storage.from('photos').remove([p.storage_path])
+      await sb.from('photos').delete().eq('id',p.id)
+      toast('Memory deleted')
+      onDelete(p.id)
+      onClose()
+    }catch(e){ toast('Error: '+e.message) }
+  }
+
+  return(
+    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{position:'fixed',inset:0,zIndex:900,background:'#030303',fontFamily:"'EB Garamond',serif"}}>
+      {/* top bar */}
+      <div style={{position:'absolute',top:0,left:0,right:0,zIndex:10,padding:'48px 16px 40px',background:'linear-gradient(to bottom,rgba(0,0,0,0.75),transparent)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <button onClick={onClose} style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(10px)',border:'none',borderRadius:30,padding:'8px 14px',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13}}>
+          <Icon d={Icons.back} size={16}/> Back
+        </button>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>toggleFav(p.id)} style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(10px)',border:'none',borderRadius:30,padding:'8px 12px',color:favs.has(p.id)?'#ff8080':'#fff',cursor:'pointer'}}>
+            <svg width={20} height={20} viewBox="0 0 24 24" fill={favs.has(p.id)?'currentColor':'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d={Icons.heart}/></svg>
+          </button>
+          {p.owner_id===user.id && <>
+            <button onClick={()=>{onClose();onEdit(p)}} style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(10px)',border:'none',borderRadius:30,padding:'8px 12px',color:'#fff',cursor:'pointer'}}><Icon d={Icons.edit}/></button>
+            <button onClick={()=>setConfirmDel(true)} style={{background:'rgba(255,255,255,0.1)',backdropFilter:'blur(10px)',border:'none',borderRadius:30,padding:'8px 12px',color:'#ff6b6b',cursor:'pointer'}}><Icon d={Icons.trash}/></button>
+          </>}
+        </div>
+      </div>
+
+      <img src={p.public_url} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+
+      {/* dots */}
+      <div style={{position:'absolute',bottom:showInfo?220:88,left:'50%',transform:'translateX(-50%)',display:'flex',gap:6,zIndex:5}}>
+        {photos.map((_,i)=>(
+          <div key={i} onClick={()=>setIdx(i)} style={{width:i===idx?18:6,height:6,borderRadius:3,background:i===idx?'rgba(255,220,180,0.8)':'rgba(255,255,255,0.25)',transition:'all .3s',cursor:'pointer'}}/>
+        ))}
+      </div>
+
+      {/* info pull-up */}
+      <div onClick={()=>setShowInfo(s=>!s)} style={{
+        position:'absolute',bottom:0,left:0,right:0,
+        background:'linear-gradient(to top,rgba(0,0,0,0.93) 70%,transparent)',
+        padding:'56px 24px 40px',
+        transform:`translateY(${showInfo?0:'calc(100% - 96px)'})`,
+        transition:'transform .4s cubic-bezier(.25,.46,.45,.94)',cursor:'pointer',zIndex:5,
+      }}>
+        <div style={{width:32,height:3,background:'rgba(255,255,255,0.2)',borderRadius:2,margin:'0 auto 18px'}}/>
+        <div style={{fontSize:24,color:'#fff',fontStyle:'italic',marginBottom:6}}>{p.title}</div>
+        {p.description&&<div style={{fontSize:14,color:'rgba(255,255,255,0.5)',lineHeight:1.7,marginBottom:14}}>{p.description}</div>}
+        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+          <div style={{display:'flex',alignItems:'center',gap:5,color:'rgba(255,255,255,0.35)',fontSize:12,letterSpacing:'.06em'}}><Icon d={Icons.cal} size={14}/>{fmtDate(p.date)}</div>
+          <div style={{display:'flex',alignItems:'center',gap:5,color:'rgba(255,220,180,0.45)',fontSize:12,letterSpacing:'.06em'}}><Icon d={Icons.tag} size={14}/>{p.category}</div>
+        </div>
+      </div>
+
+      {confirmDel&&(
+        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.88)',backdropFilter:'blur(12px)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:20,padding:32}}>
+          <div style={{fontSize:22,color:'#fff',fontStyle:'italic',marginBottom:8}}>Delete this memory?</div>
+          <div style={{fontSize:14,color:'rgba(255,255,255,0.35)',textAlign:'center',marginBottom:32}}>This cannot be undone.</div>
+          <div style={{display:'flex',gap:12,width:'100%'}}>
+            <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:'14px',borderRadius:12,background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',color:'#fff',fontSize:15,cursor:'pointer'}}>Cancel</button>
+            <button onClick={doDelete} style={{flex:1,padding:'14px',borderRadius:12,background:'rgba(255,60,60,0.12)',border:'1px solid rgba(255,60,60,0.3)',color:'ff8080',fontSize:15,cursor:'pointer'}}>Delete</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── EDIT SHEET
+function EditSheet({photo,user,onClose,onSave,toast}){
+  const [form,setForm] = React.useState({title:photo.title,description:photo.description||'',date:photo.date,category:photo.category})
+  const [loading,setLoading] = React.useState(false)
+
+  const save = async()=>{
+    setLoading(true)
+    try{
+      const {error} = await sb.from('photos').update({
+        title:form.title||'Untitled',
+        description:form.description||null,
+        date:form.date,
+        category:form.category,
+      }).eq('id',photo.id)
+      if(error) throw error
+      toast('Memory updated ✦')
+      onSave({...photo,...form})
+      onClose()
+    }catch(e){ toast('Error: '+e.message) }
+    setLoading(false)
+  }
+
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(5,5,5,0.98)',display:'flex',flexDirection:'column',fontFamily:"'EB Garamond',serif",overflowY:'auto'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'52px 20px 0'}}>
+        <span style={{color:'#fff',fontSize:20,fontStyle:'italic'}}>Edit Memory</span>
+        <button onClick={onClose} style={{background:'rgba(255,255,255,0.08)',border:'none',borderRadius:30,padding:'8px 12px',color:'rgba(255,255,255,0.5)',cursor:'pointer'}}><Icon d={Icons.x}/></button>
+      </div>
+      <img src={photo.public_url} style={{width:'100%',height:200,objectFit:'cover',opacity:.45,marginTop:16}}/>
+      <div style={{padding:'20px 20px 40px'}}>
+        {[
+          {k:'title',label:'TITLE',ph:'Name this memory…',type:'text'},
+          {k:'description',label:'CAPTION',ph:'A few words…',type:'text'},
+          {k:'date',label:'DATE',ph:'',type:'date'},
+        ].map(({k,label,ph,type})=>(
+          <div key={k} style={{marginBottom:14}}>
+            <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:5}}>{label}</div>
+            <input type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}
+              style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:15,fontFamily:"'EB Garamond',serif",outline:'none',boxSizing:'border-box',colorScheme:'dark'}}/>
+          </div>
+        ))}
+        <div style={{marginBottom:24}}>
+          <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:8}}>CATEGORY</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+            {CATEGORIES.filter(c=>c!=='All').map(c=>(
+              <button key={c} onClick={()=>setForm({...form,category:c})} style={{
+                padding:'7px 14px',borderRadius:30,fontSize:13,cursor:'pointer',fontStyle:'italic',
+                background:form.category===c?'rgba(255,220,180,0.12)':'rgba(255,255,255,0.04)',
+                border:`1px solid ${form.category===c?'rgba(255,220,180,0.3)':'rgba(255,255,255,0.08)'}`,
+                color:form.category===c?'rgba(255,220,180,0.85)':'rgba(255,255,255,0.4)',
+              }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <button onClick={save} disabled={loading} style={{
+          width:'100%',padding:'16px',borderRadius:14,
+          background:'linear-gradient(135deg,rgba(255,220,180,0.18),rgba(200,150,100,0.1))',
+          border:'1px solid rgba(255,220,180,0.3)',color:'rgba(255,220,180,0.9)',
+          fontSize:16,cursor:'pointer',fontStyle:'italic',
+          display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+        }}>
+          {loading?<div style={{width:18,height:18,border:'2px solid rgba(255,220,180,0.3)',borderTopColor:'rgba(255,220,180,0.8)',borderRadius:'50%',animation:'spin 1s linear infinite'}}/>:'Save Changes'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── SHARE / COLLABORATOR SHEET
+function ShareSheet({user,onClose,toast}){
+  const [email,setEmail] = React.useState('')
+  const [perm,setPerm] = React.useState('view')
+  const [loading,setLoading] = React.useState(false)
+  const [collabs,setCollabs] = React.useState([])
+
+  React.useEffect(()=>{
+    sb.from('collaborators').select('*').eq('owner_id',user.id).then(({data})=>setCollabs(data||[]))
+  },[])
+
+  const invite = async()=>{
+    if(!email) return
+    setLoading(true)
+    try{
+      const {error} = await sb.from('collaborators').insert({
+        owner_id:user.id,
+        collaborator_email:email.toLowerCase().trim(),
+        permission:perm,
+        invite_accepted:true,
+      })
+      if(error) throw error
+      toast('Collaborator added ✦')
+      setEmail('')
+      const {data} = await sb.from('collaborators').select('*').eq('owner_id',user.id)
+      setCollabs(data||[])
+    }catch(e){ toast('Error: '+e.message) }
+    setLoading(false)
+  }
+
+  const remove = async(id)=>{
+    await sb.from('collaborators').delete().eq('id',id)
+    setCollabs(c=>c.filter(x=>x.id!==id))
+    toast('Removed')
+  }
+
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(5,5,5,0.98)',display:'flex',flexDirection:'column',fontFamily:"'EB Garamond',serif",overflowY:'auto'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'52px 20px 16px'}}>
+        <span style={{color:'#fff',fontSize:20,fontStyle:'italic'}}>Share Gallery</span>
+        <button onClick={onClose} style={{background:'rgba(255,255,255,0.08)',border:'none',borderRadius:30,padding:'8px 12px',color:'rgba(255,255,255,0.5)',cursor:'pointer'}}><Icon d={Icons.x}/></button>
+      </div>
+      <div style={{padding:'0 20px 40px'}}>
+        <div style={{background:'rgba(255,220,180,0.05)',border:'1px solid rgba(255,220,180,0.12)',borderRadius:14,padding:'16px',marginBottom:24}}>
+          <div style={{fontSize:13,color:'rgba(255,220,180,0.6)',letterSpacing:'.06em',marginBottom:4}}>YOUR APP LINK</div>
+          <div style={{fontSize:14,color:'rgba(255,255,255,0.5)',wordBreak:'break-all'}}>{window.location.origin}</div>
+          <button onClick={()=>{navigator.clipboard.writeText(window.location.origin);toast('Link copied!')}} style={{marginTop:10,padding:'8px 16px',borderRadius:30,background:'rgba(255,220,180,0.1)',border:'1px solid rgba(255,220,180,0.2)',color:'rgba(255,220,180,0.7)',fontSize:12,cursor:'pointer',letterSpacing:'.08em'}}>COPY LINK</button>
+        </div>
+
+        <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:8}}>INVITE BY EMAIL</div>
+        <input type="email" placeholder="collaborator@email.com" value={email} onChange={e=>setEmail(e.target.value)}
+          style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:15,fontFamily:"'EB Garamond',serif",outline:'none',boxSizing:'border-box',colorScheme:'dark',marginBottom:12}}/>
+
+        <div style={{display:'flex',gap:8,marginBottom:16}}>
+          {['view','upload','edit'].map(p=>(
+            <button key={p} onClick={()=>setPerm(p)} style={{
+              flex:1,padding:'9px 0',borderRadius:10,fontSize:13,cursor:'pointer',
+              background:perm===p?'rgba(255,220,180,0.12)':'rgba(255,255,255,0.04)',
+              border:`1px solid ${perm===p?'rgba(255,220,180,0.3)':'rgba(255,255,255,0.08)'}`,
+              color:perm===p?'rgba(255,220,180,0.85)':'rgba(255,255,255,0.35)',
+              textTransform:'capitalize',
+            }}>{p}</button>
+          ))}
+        </div>
+
+        <button onClick={invite} disabled={!email||loading} style={{
+          width:'100%',padding:'14px',borderRadius:12,marginBottom:28,
+          background:email?'linear-gradient(135deg,rgba(255,220,180,0.18),rgba(200,150,100,0.1))':'rgba(255,255,255,0.03)',
+          border:`1px solid ${email?'rgba(255,220,180,0.3)':'rgba(255,255,255,0.06)'}`,
+          color:email?'rgba(255,220,180,0.9)':'rgba(255,255,255,0.2)',
+          fontSize:15,cursor:email?'pointer':'not-allowed',fontStyle:'italic',
+        }}>Add Collaborator</button>
+
+        {collabs.length>0&&<>
+          <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,letterSpacing:'.12em',marginBottom:12}}>PEOPLE WITH ACCESS</div>
+          {collabs.map(c=>(
+            <div key={c.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'rgba(255,255,255,0.03)',borderRadius:10,marginBottom:8,border:'1px solid rgba(255,255,255,0.06)'}}>
+              <div>
+                <div style={{color:'rgba(255,255,255,0.7)',fontSize:14}}>{c.collaborator_email}</div>
+                <div style={{color:'rgba(255,220,180,0.45)',fontSize:11,letterSpacing:'.08em',marginTop:2,textTransform:'uppercase'}}>{c.permission}</div>
+              </div>
+              <button onClick={()=>remove(c.id)} style={{background:'none',border:'none',color:'rgba(255,80,80,0.5)',cursor:'pointer',padding:4}}><Icon d={Icons.x} size={16}/></button>
+            </div>
+          ))}
+        </>}
+      </div>
+    </div>
+  )
+}
+
+// ── PHOTO CARD
+function PhotoCard({photo,onClick,isFav,wide}){
+  const [loaded,setLoaded] = React.useState(false)
+  return(
+    <div onClick={()=>onClick(photo)} style={{
+      gridColumn:wide?'span 2':'span 1',
+      borderRadius:12,overflow:'hidden',cursor:'pointer',
+      background:'rgba(255,255,255,0.03)',
+      aspectRatio:wide?'16/9':'3/4',
+      position:'relative',animation:'fadeIn .5s ease both',
+    }}>
+      {!loaded&&<div style={{position:'absolute',inset:0,background:'rgba(255,255,255,0.04)',animation:'pulse 2s ease-in-out infinite'}}/>}
+      <img src={photo.public_url} onLoad={()=>setLoaded(true)} style={{width:'100%',height:'100%',objectFit:'cover',opacity:loaded?1:0,transition:'opacity .6s ease',display:'block'}}/>
+      <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,0.65),transparent 55%)'}}/>
+      {isFav&&<div style={{position:'absolute',top:8,right:8,color:'#ff8080'}}><svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth={1.5}><path d={Icons.heart}/></svg></div>}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'8px 11px'}}>
+        <div style={{color:'#fff',fontSize:13,fontStyle:'italic',fontFamily:"'EB Garamond',serif",lineHeight:1.3}}>{photo.title}</div>
+      </div>
+    </div>
+  )
+}
+
+// ── TIMELINE
+function Timeline({photos,onClick,favs}){
+  const groups = React.useMemo(()=>{
+    const g={}
+    photos.forEach(p=>{
+      const k=new Date(p.date).toLocaleDateString('en-US',{month:'long',year:'numeric'})
+      if(!g[k])g[k]=[]
+      g[k].push(p)
+    })
+    return Object.entries(g).sort((a,b)=>new Date(b[1][0].date)-new Date(a[1][0].date))
+  },[photos])
+
+  return(
+    <div style={{paddingBottom:100}}>
+      {groups.map(([month,gp])=>(
+        <div key={month} style={{marginBottom:28}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 20px 12px'}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:'rgba(255,220,180,0.5)',flexShrink:0}}/>
+            <div style={{fontSize:12,color:'rgba(255,220,180,0.55)',letterSpacing:'.1em',fontFamily:"'EB Garamond',serif"}}>{month.toUpperCase()}</div>
+            <div style={{flex:1,height:1,background:'rgba(255,255,255,0.05)'}}/>
+          </div>
+          <div style={{padding:'0 20px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            {gp.map((p,i)=><PhotoCard key={p.id} photo={p} onClick={onClick} isFav={favs.has(p.id)} wide={i===0&&gp.length%2!==0}/>)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── MAIN APP
+function App(){
+  const [user,setUser] = React.useState(null)
+  const [loading,setLoading] = React.useState(true)
+  const [photos,setPhotos] = React.useState([])
+  const [favs,setFavs] = React.useState(new Set())
+  const [view,setView] = React.useState('grid')
+  const [cat,setCat] = React.useState('All')
+  const [search,setSearch] = React.useState('')
+  const [showSearch,setShowSearch] = React.useState(false)
+  const [viewer,setViewer] = React.useState(null)
+  const [showUpload,setShowUpload] = React.useState(false)
+  const [editPhoto,setEditPhoto] = React.useState(null)
+  const [showShare,setShowShare] = React.useState(false)
+  const [toast,setToast] = React.useState({msg:'',on:false})
+  const tRef = React.useRef()
+
+  const showToast = msg=>{
+    clearTimeout(tRef.current)
+    setToast({msg,on:true})
+    tRef.current=setTimeout(()=>setToast(t=>({...t,on:false})),2500)
+  }
+
+  // Auth check
+  React.useEffect(()=>{
+    sb.auth.getSession().then(({data:{session}})=>{
+      setUser(session?.user||null)
+      setLoading(false)
+    })
+    const {data:{subscription}} = sb.auth.onAuthStateChange((_,session)=>{
+      setUser(session?.user||null)
+    })
+    return ()=>subscription.unsubscribe()
+  },[])
+
+  // Load photos
+  const loadPhotos = React.useCallback(async()=>{
+    if(!user) return
+    const {data,error} = await sb.from('photos').select('*').order('date',{ascending:false})
+    if(!error) setPhotos(data||[])
+  },[user])
+
+  React.useEffect(()=>{ loadPhotos() },[loadPhotos])
+
+  const filtered = photos.filter(p=>{
+    const mCat = cat==='All'||p.category===cat
+    const mSearch = !search||p.title?.toLowerCase().includes(search.toLowerCase())||p.description?.toLowerCase().includes(search.toLowerCase())
+    return mCat&&mSearch
+  })
+
+  const toggleFav = id=>{
+    setFavs(prev=>{
+      const n=new Set(prev)
+      if(n.has(id)){n.delete(id);showToast('Removed from favourites')}
+      else{n.add(id);showToast('Added to favourites ♥')}
+      return n
+    })
+  }
+
+  if(loading) return(
+    <div style={{minHeight:'100vh',background:'#080808',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{width:28,height:28,border:'2px solid rgba(255,220,180,0.2)',borderTopColor:'rgba(255,220,180,0.7)',borderRadius:'50%',animation:'spin 1s linear infinite'}}/>
+    </div>
+  )
+
+  if(!user) return <LoginScreen onAuth={setUser}/>
+
+  return(
+    <div style={{maxWidth:430,margin:'0 auto',minHeight:'100vh',background:'#080808',fontFamily:"'EB Garamond',serif",position:'relative'}}>
+
+      {/* HEADER */}
+      <div style={{padding:'52px 20px 0',background:'linear-gradient(to bottom,#0d0d0d,#080808)'}}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:4}}>
+          <div>
+            <div style={{fontSize:11,letterSpacing:'.2em',color:'rgba(255,220,180,0.4)',marginBottom:4}}>OUR ARCHIVE</div>
+            <h1 style={{fontSize:30,fontWeight:400,color:'#fff',fontStyle:'italic',lineHeight:1.1}}>Mémoire</h1>
+          </div>
+          <div style={{display:'flex',gap:8,paddingTop:4}}>
+            <button onClick={()=>setShowSearch(s=>!s)} style={{background:showSearch?'rgba(255,220,180,0.1)':'rgba(255,255,255,0.06)',border:`1px solid ${showSearch?'rgba(255,220,180,0.25)':'rgba(255,255,255,0.08)'}`,borderRadius:30,padding:'8px 10px',color:showSearch?'rgba(255,220,180,0.8)':'rgba(255,255,255,0.5)',cursor:'pointer'}}><Icon d={Icons.search}/></button>
+            <button onClick={()=>setShowShare(true)} style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:30,padding:'8px 10px',color:'rgba(255,255,255,0.5)',cursor:'pointer'}}><Icon d={Icons.share}/></button>
+            <button onClick={()=>sb.auth.signOut()} style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:30,padding:'8px 10px',color:'rgba(255,100,100,0.5)',cursor:'pointer'}}><Icon d={Icons.logout}/></button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{display:'flex',gap:8,marginTop:14,marginBottom:14}}>
+          {[{l:'Memories',v:photos.length},{l:'Favourites',v:favs.size},{l:'Chapters',v:new Set(photos.map(p=>p.category)).size}].map(({l,v})=>(
+            <div key={l} style={{flex:1,background:'rgba(255,255,255,0.03)',borderRadius:12,padding:'10px 10px',border:'1px solid rgba(255,255,255,0.05)'}}>
+              <div style={{fontSize:20,color:'#fff',fontStyle:'italic'}}>{v}</div>
+              <div style={{fontSize:10,color:'rgba(255,255,255,0.28)',letterSpacing:'.08em',marginTop:1}}>{l.toUpperCase()}</div>
+            </div>
+          ))}
+        </div>
+
+        {showSearch&&(
+          <div style={{marginBottom:12,animation:'fadeIn .3s ease'}}>
+            <input autoFocus type="text" placeholder="Search memories…" value={search} onChange={e=>setSearch(e.target.value)}
+              style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:12,padding:'12px 16px',color:'#fff',fontSize:15,fontFamily:"'EB Garamond',serif",outline:'none',boxSizing:'border-box'}}/>
+          </div>
+        )}
+
+        {/* Categories */}
+        <div style={{display:'flex',gap:7,overflowX:'auto',paddingBottom:14,scrollbarWidth:'none'}}>
+          {CATEGORIES.map(c=>(
+            <button key={c} onClick={()=>setCat(c)} style={{
+              flexShrink:0,padding:'7px 14px',borderRadius:30,fontSize:13,
+              cursor:'pointer',fontStyle:c!=='All'?'italic':'normal',transition:'all .25s',
+              background:cat===c?'rgba(255,220,180,0.1)':'transparent',
+              border:`1px solid ${cat===c?'rgba(255,220,180,0.3)':'rgba(255,255,255,0.08)'}`,
+              color:cat===c?'rgba(255,220,180,0.85)':'rgba(255,255,255,0.38)',
+            }}>{c}</button>
+          ))}
+        </div>
+        <div style={{height:1,background:'rgba(255,255,255,0.05)'}}/>
+      </div>
+
+      {/* GALLERY */}
+      <div style={{paddingTop:16}}>
+        {filtered.length===0
+          ? <div style={{textAlign:'center',padding:'80px 32px',color:'rgba(255,255,255,0.2)'}}>
+              <div style={{fontSize:36,marginBottom:12,opacity:.3}}>✦</div>
+              <div style={{fontSize:16,fontStyle:'italic'}}>No memories yet</div>
+              <div style={{fontSize:13,marginTop:6,opacity:.6}}>Tap + to add your first</div>
+            </div>
+          : view==='timeline'
+            ? <Timeline photos={filtered} onClick={p=>setViewer(filtered.findIndex(x=>x.id===p.id))} favs={favs}/>
+            : <div style={{padding:'0 20px 100px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                {filtered.map((p,i)=><PhotoCard key={p.id} photo={p} onClick={ph=>setViewer(filtered.findIndex(x=>x.id===ph.id))} isFav={favs.has(p.id)} wide={i===0}/>)}
+              </div>
+        }
+      </div>
+
+      {/* FAB */}
+      <button onClick={()=>setShowUpload(true)} style={{
+        position:'fixed',bottom:30,right:'calc(50% - 195px)',
+        width:56,height:56,borderRadius:'50%',
+        background:'linear-gradient(135deg,rgba(255,220,180,0.22),rgba(200,150,100,0.12))',
+        border:'1px solid rgba(255,220,180,0.28)',color:'rgba(255,220,180,0.9)',
+        cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+        boxShadow:'0 8px 32px rgba(0,0,0,0.6)',backdropFilter:'blur(10px)',zIndex:800,
+      }}><Icon d={Icons.plus}/></button>
+
+      {/* BOTTOM NAV */}
+      <div style={{
+        position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',
+        width:'100%',maxWidth:430,
+        background:'rgba(8,8,8,0.94)',backdropFilter:'blur(20px)',
+        borderTop:'1px solid rgba(255,255,255,0.05)',
+        display:'flex',padding:'12px 0 22px',zIndex:700,
+      }}>
+        {[
+          {id:'grid',icon:Icons.grid,label:'Gallery'},
+          {id:'timeline',icon:Icons.clock,label:'Timeline'},
+          {id:'favs',icon:Icons.heart,label:'Loved'},
+        ].map(({id,icon,label})=>(
+          <button key={id} onClick={()=>{
+            if(id==='favs'){ setCat('All'); setView('grid') }
+            else setView(id)
+          }} style={{
+            flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3,
+            background:'none',border:'none',cursor:'pointer',
+            color:view===id?'rgba(255,220,180,0.85)':'rgba(255,255,255,0.22)',transition:'color .2s',
+          }}>
+            <Icon d={icon} size={20}/>
+            <span style={{fontSize:9,letterSpacing:'.1em'}}>{label.toUpperCase()}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* OVERLAYS */}
+      {viewer!==null&&(
+        <Viewer photos={filtered} startIdx={viewer} user={user}
+          onClose={()=>setViewer(null)}
+          onDelete={id=>{setPhotos(p=>p.filter(x=>x.id!==id));setViewer(null)}}
+          onEdit={p=>{setViewer(null);setEditPhoto(p)}}
+          favs={favs} toggleFav={toggleFav} toast={showToast}
+        />
+      )}
+      {showUpload&&<UploadSheet user={user} onClose={()=>setShowUpload(false)} onDone={loadPhotos} toast={showToast}/>}
+      {editPhoto&&<EditSheet photo={editPhoto} user={user} onClose={()=>setEditPhoto(null)} onSave={p=>{setPhotos(ps=>ps.map(x=>x.id===p.id?p:x))}} toast={showToast}/>}
+      {showShare&&<ShareSheet user={user} onClose={()=>setShowShare(false)} toast={showToast}/>}
+
+      <Toast msg={toast.msg} visible={toast.on}/>
+    </div>
+  )
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />)
