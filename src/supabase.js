@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://zdhtqjrrzlzosbhxzahc.supabase.BSG'
-const supabaseAnonKey = 'sb_publishable_7igSJ_GSje4APpwUAwX8CQ_gUsb8BSG'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Bucket name — must match EXACTLY what's in Supabase Storage
+export const BUCKET_NAME = 'photos'
